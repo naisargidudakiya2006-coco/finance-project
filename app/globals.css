@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --brand-base: #4a154b;
+  --brand-magenta: #c13584;
+  --brand-orange: #f56040;
+  --brand-gold: #ffdc80;
+  --brand-ink: #1a1d23;
+  --brand-muted: #5f6270;
+  --app-shell:
+    radial-gradient(circle at top left, rgba(255, 220, 128, 0.6), transparent 32%),
+    radial-gradient(circle at top right, rgba(193, 53, 132, 0.2), transparent 28%),
+    linear-gradient(180deg, #fffaf1 0%, #fff4f8 48%, #fffaf1 100%);
+}
+
+@theme inline {
+  --color-background: #fffaf1;
+  --color-foreground: var(--brand-ink);
+  --font-sans: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #fffaf1;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--app-shell);
+  color: var(--brand-ink);
+  font-family: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

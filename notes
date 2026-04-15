@@ -1,0 +1,956 @@
+Here I am giving whole components file help me to modify ALL codes step by step
+
+Expense.tsx
+
+"use client";
+import { useState } from "react";
+
+// ✅ Updated categories list
+const CATEGORIES = ["Food", "Travel", "Bills", "Shopping", "Other"];
+
+export default function Expense() {
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("Food");
+  const [customCategory, setCustomCategory] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  // Determine the final name to send to the database
+  const finalCategoryName = category === "Other" ? customCategory.trim() : category;
+
+  // Validation: Amount must be > 0, date must exist, and if "Other" is picked, custom input must not be empty
+  const isValid = 
+    Number(amount) > 0 && 
+    !!date && 
+    (category !== "Other" || customCategory.trim() !== "");
+
+  const addExpense = async () => {
+    if (!isValid) return;
+    setLoading(true); 
+    setError(""); 
+    setSuccess(false);
+
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: finalCategoryName, 
+          amount: Number(amount), 
+          type: "expense", 
+          // Defaulting source to "expense" or removing if your DB allows null, 
+          // keeping a default string if your schema requires it.
+          source: "general", 
+          date 
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      // Reset form
+      setAmount(""); 
+      setCustomCategory(""); 
+      setCategory("Food");
+      setDate(new Date().toISOString().split("T")[0]);
+      setSuccess(true); 
+      setTimeout(() => setSuccess(false), 3000);
+
+    } catch { 
+      setError("Database connection failed."); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FF] flex items-start justify-center p-8">
+      <div className="bg-white rounded-2xl shadow-md border border-[#E6E6FA] p-8 w-full max-w-md">
+        <h1 className="text-2xl font-bold text-[#4B0082] mb-1">Add Expense</h1>
+        <p className="text-sm text-gray-400 mb-6">Track your daily spending</p>
+        
+        <div className="space-y-4">
+          {/* Amount Input */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">Amount (₹)</label>
+            <input 
+              type="number" 
+              placeholder="0" 
+              min={1} 
+              value={amount} 
+              onChange={e => setAmount(e.target.value)} 
+              className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 focus:border-[#7F00FF] outline-none" 
+            />
+          </div>
+
+          {/* Category Dropdown */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">Category</label>
+            <select 
+              value={category} 
+              onChange={e => setCategory(e.target.value)} 
+              className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 outline-none bg-white"
+            >
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* Custom Category Input - Only shows if "Other" is selected */}
+          {category === "Other" && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">Specify Category</label>
+              <input 
+                type="text" 
+                placeholder="Enter custom category" 
+                value={customCategory} 
+                onChange={e => setCustomCategory(e.target.value)} 
+                className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 focus:border-[#7F00FF] outline-none" 
+              />
+            </div>
+          )}
+
+          {/* Date Input */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 uppercase font-semibold">Date</label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={e => setDate(e.target.value)} 
+              className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 focus:border-[#7F00FF] outline-none" 
+            />
+          </div>
+
+          {/* Messages */}
+          {error   && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">✕ {error}</p>}
+          {success && <p className="text-sm text-green-600 bg-green-50 p-3 rounded-xl">✓ Expense saved successfully</p>}
+
+          {/* Submit Button */}
+          <button 
+            onClick={addExpense} 
+            disabled={!isValid || loading} 
+            className="w-full bg-[#7F00FF] hover:bg-[#4B0082] disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+          >
+            {loading ? "Saving..." : "Add Expense"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+History.tsx
+
+
+"use client";
+import { useEffect, useState } from "react";
+
+export default function SimpleHistory() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch("/api/transactions");
+      const result = await res.json();
+      // Oldest to Newest
+      const sorted = result.sort((a: any, b: any) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      setData(sorted);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const deleteItem = async (id: string | number) => {
+  if (!confirm("Delete this entry?")) return;
+
+  try {
+    // ✅ This matches the folder structure: /api/transactions/[id]
+    const res = await fetch(`/api/transactions/${id}`, { 
+      method: "DELETE" 
+    });
+
+    if (res.ok) {
+      // Remove from UI state
+      setData((prev) => prev.filter((item) => item.id !== id));
+    } else {
+      const errorData = await res.json();
+      console.error("Server says:", errorData);
+      alert("Delete failed on server. Check if the ID exists.");
+    }
+  } catch (err) {
+    console.error("Network error:", err);
+    alert("Check your internet or server connection.");
+  }
+};
+  if (loading) return <div className="p-10 text-center text-gray-400">Loading history...</div>;
+
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <h2 className="text-xl font-bold text-gray-800 mb-6 border-b pb-2">History</h2>
+      
+      <div className="space-y-3">
+        {data.length === 0 ? (
+          <p className="text-center text-gray-400 py-10">No transactions found.</p>
+        ) : (
+          data.map((item) => {
+            const isIncome = item.type === "salary" || item.type === "pocketmoney";
+            // Use _id if your database is MongoDB, otherwise use id
+            const itemId = item.id || item._id;
+
+            return (
+              <div key={itemId} className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm">
+                    {isIncome ? "💰 Income" : `💸 ${item.name}`}
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {new Date(item.date).toLocaleDateString()}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-6">
+                  <span className={`font-bold ${isIncome ? "text-green-500" : "text-red-500"}`}>
+                    {isIncome ? "+" : "-"} ₹{Number(item.amount).toLocaleString()}
+                  </span>
+
+                  <button 
+                    onClick={() => deleteItem(itemId)}
+                    className="text-gray-300 hover:text-red-500 p-2"
+                  >
+                    {/* Simple Trash Icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// "use client";
+// import { useEffect, useState } from "react";
+
+// export default function SimpleHistory() {
+//   const [data, setData] = useState<any[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [editingId, setEditingId] = useState<string | null>(null);
+//   const [tempName, setTempName] = useState("");
+
+//   const fetchData = async () => {
+//     try {
+//       const res = await fetch("/api/transactions");
+//       const result = await res.json();
+      
+//       // ✅ SORT: Oldest at the top, Newest at the bottom
+//       const sorted = result.sort((a: any, b: any) => 
+//         new Date(a.date).getTime() - new Date(b.date).getTime()
+//       );
+//       setData(sorted);
+//     } catch (err) {
+//       console.error("Fetch error:", err);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchData();
+//   }, []);
+
+//   const deleteItem = async (id: string | number) => {
+//     try {
+//       const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+//       if (res.ok) {
+//         setData((prev) => prev.filter((item) => item.id !== id));
+//       }
+//     } catch (err) {
+//       alert("Failed to delete");
+//     }
+//   };
+
+//   const updateSpendingName = async (id: string | number) => {
+//     try {
+//       const res = await fetch(`/api/transactions/${id}`, {
+//         method: "PATCH",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ name: tempName }),
+//       });
+//       if (res.ok) {
+//         setData((prev) => prev.map((item) => item.id === id ? { ...item, name: tempName } : item));
+//         setEditingId(null);
+//       }
+//     } catch (err) {
+//       alert("Failed to update");
+//     }
+//   };
+
+//   if (loading) return <div className="p-10 text-center text-gray-400">Loading history...</div>;
+
+//   return (
+//     <div className="max-w-xl mx-auto p-6">
+//       <h2 className="text-xl font-bold text-gray-800 mb-6 border-b pb-2">Transaction History</h2>
+      
+//       <div className="space-y-3">
+//         {data.length === 0 ? (
+//           // Empty State
+//           <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-2xl">
+//             <p className="text-gray-400 italic">No history found yet.</p>
+//           </div>
+//         ) : (
+//           data.map((item) => {
+//             const isIncome = item.type === "salary" || item.type === "pocketmoney";
+//             const isSpending = item.type === "expense";
+
+//             return (
+//               <div 
+//                 key={item.id} 
+//                 className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
+//               >
+//                 <div className="flex flex-col flex-grow">
+//                   {/* Category Name / Editable Area */}
+//                   {editingId === item.id ? (
+//                     <div className="flex gap-2">
+//                       <input 
+//                         value={tempName}
+//                         onChange={(e) => setTempName(e.target.value)}
+//                         className="border rounded px-2 py-1 text-sm outline-none border-purple-400"
+//                         autoFocus
+//                       />
+//                       <button onClick={() => updateSpendingName(item.id)} className="text-xs text-green-600 font-bold">Save</button>
+//                     </div>
+//                   ) : (
+//                     <span 
+//                       className={`font-semibold text-sm ${isSpending ? "cursor-pointer text-gray-700 hover:text-purple-600" : "text-gray-900"}`}
+//                       onClick={() => {
+//                         if (isSpending) {
+//                           setEditingId(item.id);
+//                           setTempName(item.name);
+//                         }
+//                       }}
+//                     >
+//                       {isIncome ? (item.type === "salary" ? "💰 Salary" : "👛 Pocket Money") : `💸 ${item.name}`}
+//                       {isSpending && <span className="ml-2 text-[8px] text-gray-300 font-normal uppercase italic">Edit</span>}
+//                     </span>
+//                   )}
+//                   <span className="text-[10px] text-gray-400 font-medium">
+//                     {new Date(item.date).toLocaleDateString()}
+//                   </span>
+//                 </div>
+
+//                 <div className="flex items-center gap-6">
+//                   {/* Amount with Color Logic */}
+//                   <span className={`font-bold text-base ${isIncome ? "text-green-500" : "text-red-500"}`}>
+//                     {isIncome ? "+" : "-"} ₹{Number(item.amount).toLocaleString()}
+//                   </span>
+
+//                   {/* Delete Button */}
+//                   <button 
+//                     onClick={() => deleteItem(item.id)}
+//                     className="text-gray-200 hover:text-red-500 transition-colors"
+//                   >
+//                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+//                       <polyline points="3 6 5 6 21 6"></polyline>
+//                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+//                     </svg>
+//                   </button>
+//                 </div>
+//               </div>
+//             );
+//           })
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+Home.tsx
+
+
+"use client";
+import { useEffect, useState, useMemo } from "react";
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, 
+  ResponsiveContainer, CartesianGrid, Legend 
+} from "recharts";
+import { Wallet, Landmark, TrendingDown, ReceiptText, ArrowUpRight } from "lucide-react";
+
+// Colors extracted from your SpendIQ logo
+const COLORS = ["#4B0082", "#7F00FF", "#FF8042", "#A45EE5", "#00C49F", "#FFBB28"];
+
+export default function SpendIQDashboard() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // FETCH DATA
+  useEffect(() => {
+    fetch("/api/transactions")
+      .then(res => res.json())
+      .then(raw => {
+        const formatted = raw.map((item) => ({
+          ...item,
+          amount: Number(item.amount)
+        }));
+        setData(formatted);
+        setLoading(false);
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  // 📈 CALCULATIONS (Salary vs Pocket Money logic)
+  const stats = useMemo(() => {
+    let salaryLeft = 0;
+    let pocketLeft = 0;
+    let totalExpense = 0;
+
+    // Process chronologically to track balance correctly
+    const chronological = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    chronological.forEach(t => {
+      if (t.type === "salary") salaryLeft += t.amount;
+      else if (t.type === "pocketmoney") pocketLeft += t.amount;
+      else if (t.type === "expense") {
+        totalExpense += t.amount;
+        if (t.source === "salary") salaryLeft -= t.amount;
+        else pocketLeft -= t.amount;
+      }
+    });
+
+    return { salaryLeft, pocketLeft, totalExpense };
+  }, [data]);
+
+  // 🥧 PIE CHART DATA (Category distribution)
+  const pieData = useMemo(() => {
+    const expenses = data.filter(i => i.type === "expense");
+    const groups = expenses.reduce((acc, curr) => {
+      acc[curr.name] = (acc[curr.name] || 0) + curr.amount;
+      return acc;
+    }, {});
+    return Object.entries(groups).map(([name, value]) => ({ name, value }));
+  }, [data]);
+
+  if (loading) return <div className="flex h-screen items-center justify-center text-indigo-600 font-bold">Loading SpendIQ...</div>;
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-[#F8F9FF] min-h-screen font-sans">
+      
+      {/* 🚀 HEADER / LOGO SECTION */}
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-tr from-[#4B0082] to-[#FF8042] rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+          S
+          </div>
+        <div>
+          <h1 className="text-2xl font-black text-[#1A1A2E] tracking-tight">SpendIQ</h1>
+          <p className="text-xs text-gray-500 font-medium italic">Smarter Money. Better Decisions.</p>
+        </div>
+      </div>
+
+      {/* 💰 TOP CARDS SECTION */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Salary Card */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-indigo-50 relative overflow-hidden group hover:shadow-md transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Landmark size={80} color="#4B0082" />
+          </div>
+          <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">Salary Left</p>
+          <h2 className="text-3xl font-black text-[#4B0082] mt-2">₹{stats.salaryLeft.toLocaleString()}</h2>
+          <div className="mt-4 flex items-center text-xs text-green-500 font-bold">
+            <ArrowUpRight size={14} /> Active Account
+          </div>
+        </div>
+
+        {/* Pocket Money Card */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-purple-50 relative overflow-hidden group hover:shadow-md transition-all">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Wallet size={80} color="#7F00FF" />
+          </div>
+          <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">Pocket Money</p>
+          <h2 className="text-3xl font-black text-[#7F00FF] mt-2">₹{stats.pocketLeft.toLocaleString()}</h2>
+          <div className="mt-4 flex items-center text-xs text-purple-400 font-bold">
+             Personal Savings
+          </div>
+        </div>
+
+        {/* Total Expense Card */}
+        <div className="bg-gradient-to-br from-[#FF8042] to-[#ff9b6a] p-6 rounded-3xl shadow-lg text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-20">
+            <TrendingDown size={80} color="#fff" />
+          </div>
+          <p className="text-white/80 text-sm font-bold uppercase tracking-wider">Total Outflow</p>
+          <h2 className="text-3xl font-black mt-2">₹{stats.totalExpense.toLocaleString()}</h2>
+          <div className="mt-4 flex items-center text-xs font-bold bg-white/20 w-fit px-2 py-1 rounded-full">
+            All Categories
+          </div>
+        </div>
+      </div>
+
+      {/* 📊 ANALYTICS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Category Breakdown (Pie) */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600"><ReceiptText size={20} /></div>
+            <h3 className="text-lg font-bold text-gray-800">Spending by Category</h3>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie 
+                  data={pieData} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  innerRadius={70} 
+                  outerRadius={100} 
+                  paddingAngle={5}
+                  stroke="none"
+                >
+                  {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip 
+                   contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 📜 RECENT HISTORY */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-gray-800">Latest Activity</h3>
+            <button className="text-xs font-bold text-indigo-600 hover:underline">View All</button>
+          </div>
+          <div className="space-y-4 max-h-[320px] overflow-y-auto pr-2">
+            {data.slice(-5).reverse().map((item) => {
+              const isIncome = item.type === "salary" || item.type === "pocketmoney";
+              return (
+                <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${isIncome ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      {isIncome ? "+" : "-"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{isIncome ? item.type.toUpperCase() : item.name}</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">{new Date(item.date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <span className={`font-black text-sm ${isIncome ? 'text-green-500' : 'text-gray-800'}`}>
+                    ₹{item.amount.toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
+            {data.length === 0 && <p className="text-center text-gray-400 py-10 italic">Your SpendIQ is empty.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// "use client";
+// import { useEffect, useState, useMemo } from "react";
+// import {
+//   BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell,
+//   ResponsiveContainer, CartesianGrid, Legend
+// } from "recharts";
+
+// const COLORS = ["#4B0082", "#7F00FF", "#8884d8", "#A45EE5", "#FF8042", "#00C49F"];
+
+// export default function PerfectDashboard() {
+//   const [data, setData] = useState([]);
+
+//   // PART 1 (Time filter)
+//   const [range1, setRange1] = useState({
+//     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0],
+//     end: new Date().toISOString().split("T")[0]
+//   });
+
+//   // PART 2 (Category filter)
+//   const [range2, setRange2] = useState({
+//     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0],
+//     end: new Date().toISOString().split("T")[0]
+//   });
+
+//   const [filterType, setFilterType] = useState("monthly");
+//   const [selectedCategory, setSelectedCategory] = useState("");
+
+//   // FETCH DATA
+//   useEffect(() => {
+//     fetch("/api/transactions")
+//       .then(res => res.json())
+//       .then(raw => {
+//         const formatted = raw.map((item) => ({
+//           ...item,
+//           amount: Number(item.amount)
+//         }));
+//         setData(formatted);
+//       })
+//       .catch(err => console.error(err));
+//   }, []);
+
+//   // CATEGORY LIST
+//   const categories = useMemo(() => {
+//     return [...new Set(data.filter(i => i.type === "expense").map(i => i.name))];
+//   }, [data]);
+
+//   // QUICK RANGE BUTTONS
+//   const setQuickRange = (type) => {
+//     setFilterType(type);
+//     const today = new Date();
+//     let start = new Date();
+
+//     if (type === "daily") start = today;
+//     if (type === "weekly") start.setDate(today.getDate() - 7);
+//     if (type === "monthly") start = new Date(today.getFullYear(), today.getMonth(), 1);
+
+//     setRange1({
+//       start: start.toISOString().split("T")[0],
+//       end: today.toISOString().split("T")[0]
+//     });
+//   };
+
+//   // FILTER 1 (TIME)
+//   const filteredByTime = useMemo(() => {
+//     return data
+//       .filter(i => i.type === "expense")
+//       .filter(item => {
+//         const d = item.date.split("T")[0];
+//         return d >= range1.start && d <= range1.end;
+//       });
+//   }, [data, range1]);
+
+//   // FILTER 2 (CATEGORY)
+//   const filteredByCategory = useMemo(() => {
+//     return data
+//       .filter(i => i.type === "expense")
+//       .filter(i => i.name === selectedCategory)
+//       .filter(item => {
+//         const d = item.date.split("T")[0];
+//         return d >= range2.start && d <= range2.end;
+//       });
+//   }, [data, selectedCategory, range2]);
+
+//   // PIE DATA
+//   const pieData = useMemo(() => {
+//     const groups = filteredByTime.reduce((acc, curr) => {
+//       acc[curr.name] = (acc[curr.name] || 0) + curr.amount;
+//       return acc;
+//     }, {});
+//     return Object.entries(groups).map(([name, value]) => ({ name, value }));
+//   }, [filteredByTime]);
+
+//   // BAR DATA
+//   const categoryBarData = useMemo(() => {
+//     const groups = filteredByCategory.reduce((acc, curr) => {
+//       const day = curr.date.slice(0, 10);
+//       acc[day] = (acc[day] || 0) + curr.amount;
+//       return acc;
+//     }, {});
+//     return Object.entries(groups).map(([day, amount]) => ({ day, amount }));
+//   }, [filteredByCategory]);
+
+//   return (
+//     <div className="p-6 max-w-6xl mx-auto space-y-6 bg-[#F8F9FF] min-h-screen">
+
+//       {/* 🟣 PART 1: TIME FILTER */}
+//       <div className="bg-white p-6 rounded-2xl shadow border">
+//         <h2 className="text-lg font-bold text-[#4B0082] mb-4">Time Analysis</h2>
+
+//         <div className="flex gap-2 mb-4">
+//           {["daily", "weekly", "monthly"].map((t) => (
+//             <button
+//               key={t}
+//               onClick={() => setQuickRange(t)}
+//               className={`px-3 py-1 rounded ${filterType === t ? "bg-[#7F00FF] text-white" : "bg-gray-100"}`}
+//             >
+//               {t}
+//             </button>
+//           ))}
+//         </div>
+
+//         <div className="flex gap-2 mb-4">
+//           <input type="date" value={range1.start}
+//             onChange={(e) => setRange1({ ...range1, start: e.target.value })} />
+//           <input type="date" value={range1.end}
+//             onChange={(e) => setRange1({ ...range1, end: e.target.value })} />
+//         </div>
+
+//         <div className="h-72">
+//           <ResponsiveContainer width="100%" height="100%">
+//             <PieChart>
+//               <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={100}>
+//                 {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+//               </Pie>
+//               <Tooltip />
+//               <Legend />
+//             </PieChart>
+//           </ResponsiveContainer>
+//         </div>
+//       </div>
+
+//       {/* 🔵 PART 2: CATEGORY FILTER */}
+//       <div className="bg-white p-6 rounded-2xl shadow border">
+//         <h2 className="text-lg font-bold text-[#4B0082] mb-4">Category Analysis</h2>
+
+//         <select
+//           value={selectedCategory}
+//           onChange={(e) => setSelectedCategory(e.target.value)}
+//           className="border p-2 mb-4 w-full"
+//         >
+//           <option value="">Select Category</option>
+//           {categories.map(cat => <option key={cat}>{cat}</option>)}
+//         </select>
+
+//         <div className="flex gap-2 mb-4">
+//           <input type="date" value={range2.start}
+//             onChange={(e) => setRange2({ ...range2, start: e.target.value })} />
+//           <input type="date" value={range2.end}
+//             onChange={(e) => setRange2({ ...range2, end: e.target.value })} />
+//         </div>
+
+//         <div className="h-72">
+//           <ResponsiveContainer width="100%" height="100%">
+//             <BarChart data={categoryBarData}>
+//               <CartesianGrid strokeDasharray="3 3" />
+//               <XAxis dataKey="day" />
+//               <YAxis />
+//               <Tooltip />
+//               <Bar dataKey="amount" fill="#7F00FF" />
+//             </BarChart>
+//           </ResponsiveContainer>
+//         </div>
+//       </div>
+
+//       {/* HISTORY */}
+//       <div className="bg-white p-6 rounded-2xl shadow border">
+//         <h2 className="text-lg font-bold text-[#4B0082] mb-4">Transactions</h2>
+
+//         {filteredByTime.length === 0 ? (
+//           <p className="text-gray-400 text-center">No data found</p>
+//         ) : (
+//           filteredByTime.map((item) => (
+//             <div key={item.id} className="flex justify-between p-3 border-b">
+//               <span>{item.name}</span>
+//               <span className="text-red-500">₹{item.amount}</span>
+//             </div>
+//           ))
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+
+Navbar.tsx
+
+import { UserButton } from "@clerk/nextjs";
+import Link from "next/link";
+import { LayoutDashboard, PlusCircle, History } from "lucide-react";
+
+export default function Navbar() {
+  return (
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-md border border-indigo-50 shadow-2xl rounded-2xl px-6 py-3 flex items-center gap-8 z-50">
+      <Link href="/" className="text-gray-400 hover:text-[#4B0082] transition-colors">
+        <LayoutDashboard size={24} />
+      </Link>
+      <Link href="/add" className="bg-[#7F00FF] p-3 rounded-full text-white shadow-lg shadow-purple-200 hover:scale-110 transition-transform">
+        <PlusCircle size={28} />
+      </Link>
+      <Link href="/history" className="text-gray-400 hover:text-[#4B0082] transition-colors">
+        <History size={24} />
+      </Link>
+      <div className="border-l pl-4 border-gray-100">
+        <UserButton afterSignOutUrl="/sign-in" />
+      </div>
+    </nav>
+  );
+}
+
+
+Salary.tsx
+
+"use client";
+import { useState, useEffect, useMemo } from "react";
+
+export default function StudentBudgetTracker() {
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState<"pocketmoney" | "salary">("pocketmoney");
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  // ✅ Fixed: fetch once only — category toggle only changes the display, not the data
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch("/api/transactions");
+      const data = await res.json();
+      setTransactions(
+        data
+          .map((t: any) => ({ ...t, amount: Number(t.amount) }))
+          // ✅ Fixed: sort ascending by date so balance runs in correct chronological order
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      );
+    } catch (err) {
+      console.error("Error fetching transactions", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [success]); // ✅ Fixed: removed `category` from deps — no need to refetch on tab switch
+
+  // ✅ Fixed: correct balance calculation
+  // Income adds to its own pool. Expenses deduct from the pool stored in their `source` field.
+  // If no source is stored, expenses deduct proportionally from total income.
+  const balances = useMemo(() => {
+    let salaryBal = 0;
+    let pocketBal = 0;
+
+    for (const t of transactions) {
+      if (t.type === "salary") {
+        salaryBal += t.amount;
+      } else if (t.type === "pocketmoney") {
+        pocketBal += t.amount;
+      } else if (t.type === "expense") {
+        // Use `source` field if present, otherwise deduct from salary first then pocket
+        const source = t.source ?? (salaryBal > 0 ? "salary" : "pocketmoney");
+        if (source === "salary") salaryBal -= t.amount;
+        else pocketBal -= t.amount;
+      }
+    }
+
+    return { salary: salaryBal, pocketmoney: pocketBal };
+  }, [transactions]);
+
+  const isValid = Number(amount) > 0 && !!date;
+
+  const saveTransaction = async () => {
+    if (!isValid) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: category === "salary" ? "Monthly Salary" : "Pocket Money",
+          amount: Number(amount),
+          type: category,
+          date,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save");
+      setAmount("");
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch {
+      setError("Failed to connect to database.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentBalance = balances[category];
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FF] flex items-start justify-center p-8">
+      <div className="bg-white rounded-2xl shadow-md border border-[#E6E6FA] p-8 w-full max-w-md">
+
+        {/* Category Switcher */}
+        <div className="flex bg-[#F1F0FB] p-1 rounded-xl mb-6">
+          <button
+            onClick={() => setCategory("pocketmoney")}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition ${
+              category === "pocketmoney" ? "bg-[#7F00FF] text-white shadow-md" : "text-gray-500"
+            }`}
+          >
+            Pocket Money
+          </button>
+          <button
+            onClick={() => setCategory("salary")}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition ${
+              category === "salary" ? "bg-[#7F00FF] text-white shadow-md" : "text-gray-500"
+            }`}
+          >
+            Salary
+          </button>
+        </div>
+
+        {/* Balance Display */}
+        <div className="text-center mb-8">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">
+            {category === "salary" ? "Salary Remaining" : "Pocket Money Remaining"}
+          </p>
+          {/* ✅ Fixed: toLocaleString for readable numbers */}
+          <h2 className={`text-4xl font-black mt-1 ${currentBalance < 0 ? "text-red-500" : "text-[#1A1A2E]"}`}>
+            ₹{currentBalance.toLocaleString()}
+          </h2>
+          {currentBalance < 0 && (
+            <p className="text-xs text-red-400 mt-1">You have exceeded your {category === "salary" ? "salary" : "pocket money"}</p>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">
+              Add {category === "salary" ? "Salary" : "Pocket Money"} (₹)
+            </label>
+            <input
+              type="number"
+              placeholder="Enter amount"
+              value={amount}
+              min={1}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 outline-none focus:border-[#7F00FF] transition text-[#1A1A2E]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border-2 border-[#E6E6FA] rounded-xl p-3 outline-none focus:border-[#7F00FF] transition text-[#1A1A2E]"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">{error}</p>}
+          {success && (
+            <p className="text-sm text-green-600 bg-green-50 p-3 rounded-xl">
+              ✓ Added to {category === "salary" ? "Salary" : "Pocket Money"}
+            </p>
+          )}
+
+          <button
+            onClick={saveTransaction}
+            disabled={!isValid || loading}
+            className="w-full bg-[#7F00FF] hover:bg-[#4B0082] disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+          >
+            {loading ? "Saving..." : `Add ${category === "salary" ? "Salary" : "Pocket Money"}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
