@@ -1,13 +1,13 @@
 "use client";
 
 import { UserButton, useClerk, useUser } from "@clerk/nextjs";
-import { History as HistoryIcon, House, ReceiptIndianRupee, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Expense from "./components/Expense";
 import History from "./components/History";
 import Home from "./components/Home";
+import { HistoryIcon, HouseIcon, ReceiptIcon, WalletIcon } from "./components/Icons";
 import Salary from "./components/Salary";
 import { readJson } from "@/lib/read-json";
 
@@ -18,13 +18,13 @@ type UserPayload = { role: UserRole | null };
 const SESSION_PREFIX = "spendiq:browser-session";
 
 const TABS: Array<{
-  icon: typeof House;
+  icon: typeof HouseIcon;
   id: TabId;
   label: string;
 }> = [
-  { id: "home", label: "Home", icon: House },
-  { id: "income", label: "Hub", icon: Wallet },
-  { id: "expense", label: "Expense", icon: ReceiptIndianRupee },
+  { id: "home", label: "Home", icon: HouseIcon },
+  { id: "income", label: "Hub", icon: WalletIcon },
+  { id: "expense", label: "Expense", icon: ReceiptIcon },
   { id: "history", label: "History", icon: HistoryIcon },
 ];
 
@@ -197,7 +197,6 @@ export default function Page() {
               {role === "STUDENT" ? "Student" : "Employee"}
             </div>
             <UserButton
-              afterSignOutUrl="/sign-in"
               appearance={{
                 elements: {
                   avatarBox: "h-11 w-11 shadow-[0_12px_30px_rgba(74,21,75,0.18)]",

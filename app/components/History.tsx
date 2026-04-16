@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Tag, Trash2 } from "lucide-react";
 
+import { CalendarDaysIcon, TagIcon, Trash2Icon } from "./Icons";
 import { readJson } from "@/lib/read-json";
 
 type UserRole = "STUDENT" | "EMPLOYEE";
@@ -109,7 +109,7 @@ export default function History({
             >
               <div className="flex items-start gap-4">
                 <div className={`rounded-[1.25rem] p-3 ${isIncome ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                  <Tag size={18} />
+                  <TagIcon size={18} />
                 </div>
 
                 <div>
@@ -117,7 +117,7 @@ export default function History({
                   <p className="mt-1 text-lg font-bold text-[var(--brand-ink)]">{categoryLabel}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-[var(--brand-muted)]">
                     <span className="inline-flex items-center gap-2">
-                      <CalendarDays size={16} />
+                      <CalendarDaysIcon size={16} />
                       {new Date(item.date).toLocaleDateString("en-IN")}
                     </span>
                     <span className="rounded-full bg-[var(--brand-gold)]/30 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand-base)]">
@@ -137,7 +137,7 @@ export default function History({
                   onClick={() => deleteItem(item.id)}
                   type="button"
                 >
-                  <Trash2 size={18} />
+                  <Trash2Icon size={18} />
                 </button>
               </div>
             </article>
