@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton, useClerk, useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Expense from "./components/Expense";
@@ -28,7 +28,7 @@ const TABS: Array<{
   { id: "history", label: "History", icon: HistoryIcon },
 ];
 
-export default function Page() {
+function PageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signOut } = useClerk();
@@ -75,26 +75,27 @@ export default function Page() {
     }
 
     const fetchRole = async () => {
-  setFetchingRole(true);
-  try {
-    const response = await fetch("/api/user", { cache: "no-store" });
-    
-    // NEW: Debugging log
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
-      const errorText = await response.text();
-      console.error(`Server says: ${errorText}`);
-      throw new Error("Failed to load user role");
-    }
+      setFetchingRole(true);
 
-    const data = await readJson<UserPayload>(response);
-    setRole(data.role ?? null);
-  } catch (error) {
-    console.error("Failed to load user role", error);
-  } finally {
-    setFetchingRole(false);
-  }
-};
+      try {
+        const response = await fetch("/api/user", { cache: "no-store" });
+
+        if (!response.ok) {
+          console.error(`API Error: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error(`Server says: ${errorText}`);
+          throw new Error("Failed to load user role");
+        }
+
+        const data = await readJson<UserPayload>(response);
+        setRole(data.role ?? null);
+      } catch (error) {
+        console.error("Failed to load user role", error);
+      } finally {
+        setFetchingRole(false);
+      }
+    };
+
     void fetchRole();
   }, [isSignedIn, sessionReady]);
 
@@ -236,5 +237,24 @@ export default function Page() {
         })}
       </nav>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[var(--app-shell)]">
+          <div className="flex flex-col items-center gap-4 rounded-[2rem] border border-white/70 bg-white/85 px-8 py-10 shadow-[0_30px_80px_rgba(74,21,75,0.18)] backdrop-blur">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--brand-base)] border-t-transparent" />
+            <p className="text-sm font-semibold tracking-[0.2em] text-[var(--brand-base)] uppercase">
+              Loading SpendIQ
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <PageContent />
+    </Suspense>
   );
 }
