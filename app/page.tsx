@@ -4,15 +4,17 @@ import { UserButton, useClerk, useUser } from "@clerk/nextjs";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import Account from "./components/Account";
 import Expense from "./components/Expense";
 import History from "./components/History";
 import Home from "./components/Home";
-import { HistoryIcon, HouseIcon, ReceiptIcon, WalletIcon } from "./components/Icons";
+import Insights from "./components/Insights";
+import { HistoryIcon, HouseIcon, ReceiptIcon, TrendingUpIcon, UserCircleIcon, WalletIcon } from "./components/Icons";
 import Salary from "./components/Salary";
 import { readJson } from "@/lib/read-json";
 
 type UserRole = "STUDENT" | "EMPLOYEE";
-type TabId = "home" | "income" | "expense" | "history";
+type TabId = "home" | "income" | "expense" | "history" | "insights" | "account";
 type UserPayload = { role: UserRole | null };
 
 const SESSION_PREFIX = "spendiq:browser-session";
@@ -26,6 +28,8 @@ const TABS: Array<{
   { id: "income", label: "Hub", icon: WalletIcon },
   { id: "expense", label: "Expense", icon: ReceiptIcon },
   { id: "history", label: "History", icon: HistoryIcon },
+  { id: "insights", label: "Insights", icon: TrendingUpIcon },
+  { id: "account", label: "Account", icon: UserCircleIcon },
 ];
 
 function PageContent() {
@@ -144,19 +148,19 @@ function PageContent() {
 
   if (!role) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--app-shell)] px-4">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[0_35px_80px_rgba(74,21,75,0.18)] backdrop-blur">
-          <div className="mb-6 inline-flex rounded-2xl bg-[linear-gradient(135deg,var(--brand-base),var(--brand-magenta),var(--brand-orange))] px-4 py-3 text-sm font-black tracking-[0.25em] text-white uppercase shadow-[0_18px_40px_rgba(193,53,132,0.28)]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-shell)] px-4 py-6 sm:px-6">
+        <div className="w-full max-w-md rounded-[1.7rem] border border-white/70 bg-white/90 p-5 shadow-[0_35px_80px_rgba(74,21,75,0.18)] backdrop-blur sm:rounded-[2rem] sm:p-8">
+          <div className="mb-5 inline-flex rounded-2xl bg-[linear-gradient(135deg,var(--brand-base),var(--brand-magenta),var(--brand-orange))] px-4 py-3 text-xs font-black tracking-[0.25em] text-white uppercase shadow-[0_18px_40px_rgba(193,53,132,0.28)] sm:mb-6 sm:text-sm">
             First Login
           </div>
-          <h1 className="text-3xl font-black text-[var(--brand-ink)]">Choose your profile</h1>
+          <h1 className="text-2xl font-black text-[var(--brand-ink)] sm:text-3xl">Choose your profile</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--brand-muted)]">
             We only ask this once. It decides whether your money page becomes Pocketmoney Hub or Salary Hub.
           </p>
 
-          <div className="mt-8 grid gap-4">
+          <div className="mt-6 grid gap-3 sm:mt-8 sm:gap-4">
             <button
-              className="rounded-[1.75rem] border border-[var(--brand-gold)]/70 bg-[var(--brand-gold)]/20 p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-magenta)] hover:shadow-[0_20px_45px_rgba(245,96,64,0.2)]"
+              className="rounded-[1.4rem] border border-[var(--brand-gold)]/70 bg-[var(--brand-gold)]/20 p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-magenta)] hover:shadow-[0_20px_45px_rgba(245,96,64,0.2)] sm:rounded-[1.75rem] sm:p-5"
               disabled={savingRole}
               onClick={() => handleRoleSelection("STUDENT")}
             >
@@ -166,7 +170,7 @@ function PageContent() {
             </button>
 
             <button
-              className="rounded-[1.75rem] border border-[var(--brand-magenta)]/25 bg-[linear-gradient(180deg,rgba(193,53,132,0.08),rgba(74,21,75,0.06))] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-orange)] hover:shadow-[0_20px_45px_rgba(193,53,132,0.2)]"
+              className="rounded-[1.4rem] border border-[var(--brand-magenta)]/25 bg-[linear-gradient(180deg,rgba(193,53,132,0.08),rgba(74,21,75,0.06))] p-4 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-orange)] hover:shadow-[0_20px_45px_rgba(193,53,132,0.2)] sm:rounded-[1.75rem] sm:p-5"
               disabled={savingRole}
               onClick={() => handleRoleSelection("EMPLOYEE")}
             >
@@ -183,18 +187,18 @@ function PageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--app-shell)] pb-32">
+    <div className="min-h-screen bg-[var(--app-shell)] pb-36 sm:pb-32">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
+        <div className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3 px-4 py-3 sm:items-center sm:gap-4 sm:px-6 sm:py-4">
+          <div className="min-w-0">
             <p className="text-xs font-black tracking-[0.3em] text-[var(--brand-magenta)] uppercase">SpendIQ</p>
-            <h1 className="mt-1 text-2xl font-black text-[var(--brand-ink)]">
+            <h1 className="mt-1 pr-2 text-xl font-black leading-tight text-[var(--brand-ink)] sm:text-2xl">
               {role === "STUDENT" ? "Pocketmoney Planner" : "Salary Planner"}
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-[var(--brand-gold)]/35 px-4 py-2 text-xs font-black tracking-[0.18em] text-[var(--brand-base)] uppercase">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="rounded-full bg-[var(--brand-gold)]/35 px-3 py-2 text-[10px] font-black tracking-[0.16em] text-[var(--brand-base)] uppercase sm:px-4 sm:text-xs sm:tracking-[0.18em]">
               {role === "STUDENT" ? "Student" : "Employee"}
             </div>
             <UserButton
@@ -208,14 +212,16 @@ function PageContent() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
         {activeTab === "home" ? <Home refreshKey={refreshKey} role={role} /> : null}
         {activeTab === "income" ? <Salary onSaved={() => setRefreshKey((current) => current + 1)} refreshKey={refreshKey} role={role} /> : null}
         {activeTab === "expense" ? <Expense onSaved={() => setRefreshKey((current) => current + 1)} /> : null}
         {activeTab === "history" ? <History onDeleted={() => setRefreshKey((current) => current + 1)} refreshKey={refreshKey} role={role} /> : null}
+        {activeTab === "insights" ? <Insights refreshKey={refreshKey} /> : null}
+        {activeTab === "account" ? <Account onRoleUpdated={handleRoleSelection} role={role} /> : null}
       </main>
 
-      <nav className="fixed bottom-5 left-1/2 z-50 flex w-[min(92vw,36rem)] -translate-x-1/2 items-center justify-between rounded-full border border-white/70 bg-[var(--brand-base)] px-3 py-3 shadow-[0_35px_70px_rgba(74,21,75,0.35)]">
+      <nav className="fixed bottom-4 left-1/2 z-50 flex w-[min(calc(100vw-1rem),44rem)] -translate-x-1/2 items-center justify-between rounded-[1.75rem] border border-white/70 bg-[var(--brand-base)] px-2 py-2 shadow-[0_35px_70px_rgba(74,21,75,0.35)] sm:bottom-5 sm:w-[min(94vw,44rem)] sm:rounded-full sm:px-3 sm:py-3">
         {TABS.map(({ icon: Icon, id, label }) => {
           const isActive = activeTab === id;
           const resolvedLabel = id === "income" ? (role === "STUDENT" ? "Pocket" : "Salary") : label;
@@ -223,7 +229,7 @@ function PageContent() {
           return (
             <button
               key={id}
-              className={`flex min-w-[4.5rem] flex-col items-center gap-1 rounded-full px-4 py-2 text-xs font-bold transition ${
+              className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1.1rem] px-2 py-2 text-[11px] font-bold transition sm:min-w-[4.5rem] sm:flex-none sm:rounded-full sm:px-4 sm:text-xs ${
                 isActive
                   ? "bg-white text-[var(--brand-base)] shadow-[0_12px_25px_rgba(255,255,255,0.22)]"
                   : "text-white/72 hover:text-white"
@@ -231,7 +237,7 @@ function PageContent() {
               onClick={() => setActiveTab(id)}
             >
               <Icon size={20} />
-              <span>{resolvedLabel}</span>
+              <span className="truncate">{resolvedLabel}</span>
             </button>
           );
         })}
